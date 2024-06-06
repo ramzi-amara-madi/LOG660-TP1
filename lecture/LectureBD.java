@@ -37,6 +37,9 @@ public class LectureBD {
    private ArrayList<String> genres = new ArrayList<String>();
    private ArrayList<String> pays = new ArrayList<String>();
 
+   private ArrayList<String> bandesAnnonce = new ArrayList<String>();
+
+
    public LectureBD() {
       connectionBD();                     
    }
@@ -138,7 +141,7 @@ public class LectureBD {
          ArrayList<String> scenaristes = new ArrayList<String>();
          ArrayList<Role> roles = new ArrayList<Role>();         
          ArrayList<String> annonces = new ArrayList<String>();
-         
+
          int id = -1,
              annee = -1,
              duree = -1,
@@ -154,9 +157,16 @@ public class LectureBD {
                if (tag.equals("film") && parser.getAttributeCount() == 1)
                   id = Integer.parseInt(parser.getAttributeValue(0));
                else if (tag.equals("realisateur") && parser.getAttributeCount() == 1)
+               {
                   realisateurId = Integer.parseInt(parser.getAttributeValue(0));
+                  System.out.println("réalisateur ajoutée" + " " + parser.getAttributeValue(0));
+               }
                else if (tag.equals("acteur") && parser.getAttributeCount() == 1)
                   roleId = Integer.parseInt(parser.getAttributeValue(0));
+               else if (tag.equals("annonce")){
+                  System.out.println("Annonce ajoutée" + " " + parser.getText());
+                  annonces.add(parser.getText());
+               }
             } 
             else if (eventType == XmlPullParser.END_TAG) 
             {                              
@@ -377,6 +387,7 @@ public class LectureBD {
       String requeteInsertionScenaristeFilm = "INSERT INTO ScenaristeFilm(idScenariste, idFilm) VALUES (?, ?)";
       String requeteInsertionGenreFilm = "INSERT INTO GenreFilm(idGenre, idFilm) VALUES (?, ?)";
       String requeteInsertionPaysProductionFilm = "INSERT INTO PaysProductionFilm(idPays, idFilm) VALUES (?, ?)";
+      String requeteInsertionBandeAnnonce = "INSERT INTO BandeAnnonce(titre, idFilm) VALUES (?, ?)";
 
         try {
            PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
@@ -389,6 +400,7 @@ public class LectureBD {
            PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
            PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
            PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
+           PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
 
 
               if(!realisateurs.contains(realisateurId)){
@@ -483,6 +495,18 @@ public class LectureBD {
                  ps10.addBatch();
                  ps10.executeBatch();
               }
+
+           for(String b : annonces){
+              if(!this.bandesAnnonce.contains(b)){
+                 ps11.setString(1, b);
+                 ps11.setInt(2, id);
+                 ps11.addBatch();
+                 ps11.executeBatch();
+                 ps11.close();
+                 connection.commit();
+                 this.bandesAnnonce.add(b);
+              }
+           }
 
               ps5.close();
               ps6.close();
