@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="lecture">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lecture/xpp3-1.1.3.4.C.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lecture/ojdbc11.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lecture/xmlpull_1_1_3_4c.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
