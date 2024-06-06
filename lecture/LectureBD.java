@@ -4,6 +4,7 @@ import java.sql.*;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
@@ -11,13 +12,14 @@ import java.util.Random;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
+import java.time.format.DateTimeFormatter;
 
 public class LectureBD {
 
    // Indiquer les chemins des fichiers xml
-   final static String PERSONNE_PATH = ""
+   final static String PERSONNE_PATH = "Donnees/personnes_latin1.xml"
            , CLIENTS_PATH = ""
-           , FILMS_PATH = "lecture/Donnees/films_latin1.xml";
+           , FILMS_PATH = "Donnees/films_latin1.xml";
 
    static Connection connection;
    public class Role {
@@ -45,12 +47,12 @@ public class LectureBD {
    }
    
    
-   public void lecturePersonnes(String nomFichier){      
+   public void lecturePersonnes(){
       try {
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
 
-         InputStream is = new FileInputStream(nomFichier);
+         InputStream is = new FileInputStream(PERSONNE_PATH);
          parser.setInput(is, null);
 
          int eventType = parser.getEventType();
@@ -113,7 +115,7 @@ public class LectureBD {
           System.out.println(e);   
        }
        catch (IOException e) {
-         System.out.println("IOException while parsing " + nomFichier); 
+         System.out.println("IOException while parsing " + PERSONNE_PATH);
        }
    }   
    
@@ -368,6 +370,31 @@ public class LectureBD {
    
    private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {      
       // On insere la personne dans la BD
+      String requeteInsertionRealisateur = "UPDATE Realisateur SET LieuNaissance = ?, DateNaissance = ?, Photo = ?, Biographie = ? WHERE idRealisateur = ?";;
+
+      try {
+         PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
+         DateTimeFormatter dtFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+         if(!realisateurs.contains(id)){
+            ps1.setString(1, lieu);
+            if(anniv != null)
+               ps1.setDate(2, Date.valueOf(LocalDate.parse(anniv, dtFormatter)));
+            else
+               ps1.setDate(2, null);
+            ps1.setString(3, photo);
+            ps1.setString(4, bio);
+            ps1.setInt(5, id);
+            ps1.addBatch();
+            ps1.executeBatch();
+            ps1.close();
+            connection.commit();
+         }
+
+      } catch (SQLException e) {
+         System.out.println("Erreur lors de l'insertion des personnes dans la BD!");
+         e.printStackTrace();
+      }
    }
    
    private void insertionFilm(int id, String titre, int annee,
@@ -397,9 +424,9 @@ public class LectureBD {
            PreparedStatement ps5 = connection.prepareStatement(requeteInsertionScenariste);
            PreparedStatement ps6 = connection.prepareStatement(requeteInsertionGenre);
            PreparedStatement ps7 = connection.prepareStatement(requeteInsertionPays);
-           PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
-           PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
-           PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
+           //PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
+           //PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
+           //PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
            PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
 
 
@@ -462,10 +489,10 @@ public class LectureBD {
                     ps5.executeBatch();
                     this.scenaristes.add(s);
                  }
-                 ps8.setInt(1, this.scenaristes.indexOf(s)+1);
-                 ps8.setInt(2, id);
-                 ps8.addBatch();
-                 ps8.executeBatch();
+                 //ps8.setInt(1, this.scenaristes.indexOf(s)+1);
+                 //ps8.setInt(2, id);
+                 //ps8.addBatch();
+                 //ps8.executeBatch();
               }
 
 
@@ -477,10 +504,10 @@ public class LectureBD {
                     ps6.addBatch();
                     this.genres.add(g);
                  }
-                 ps9.setInt(1, this.genres.indexOf(g)+1);
-                 ps9.setInt(2, id);
-                 ps9.addBatch();
-                 ps9.executeBatch();
+                 //ps9.setInt(1, this.genres.indexOf(g)+1);
+                 //ps9.setInt(2, id);
+                 //ps9.addBatch();
+                 //ps9.executeBatch();
               }
 
               // ajout des pays
@@ -490,13 +517,13 @@ public class LectureBD {
                     ps7.addBatch();
                     this.pays.add(p);
                  }
-                 ps10.setInt(1,this.pays.indexOf(p)+1);
-                 ps10.setInt(2, id);
-                 ps10.addBatch();
-                 ps10.executeBatch();
+                 //ps10.setInt(1,this.pays.indexOf(p)+1);
+                 //ps10.setInt(2, id);
+                 //ps10.addBatch();
+                 //ps10.executeBatch();
               }
 
-           for(String b : annonces){
+           /*for(String b : annonces){
               if(!this.bandesAnnonce.contains(b)){
                  ps11.setString(1, b);
                  ps11.setInt(2, id);
@@ -506,14 +533,15 @@ public class LectureBD {
                  connection.commit();
                  this.bandesAnnonce.add(b);
               }
-           }
+           }*/
 
               ps5.close();
               ps6.close();
               ps7.close();
-              ps8.close();
-              ps9.close();
-              ps10.close();
+              //ps8.close();
+              //ps9.close();
+              //ps10.close();
+              ps11.close();
               connection.commit();
 
         } catch (SQLException e) {
@@ -588,7 +616,8 @@ public class LectureBD {
       //lecture.insererForfaits();
 
       //lecture.lecturePersonnes(args[0]);
-      lecture.lectureFilms();
+      //lecture.lectureFilms();
+      lecture.lecturePersonnes();
 
       //String basePath = System.getProperty("user.dir") + File.separator + "Donnees" + File.separator;
       //lecture.lecturePersonnes(args[0]);
