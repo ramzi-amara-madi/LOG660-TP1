@@ -2,10 +2,8 @@ import java.io.*;
 
 import java.sql.*;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Random;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -15,42 +13,40 @@ import org.xmlpull.v1.XmlPullParserFactory;
 public class LectureBD {
 
    // Indiquer les chemins des fichiers xml
-   final static String PERSONNE_PATH = ""
+   final static String PERSONNE_PATH = "lecture/Donnees/personnes_latin1.xml"
            , CLIENTS_PATH = ""
            , FILMS_PATH = "lecture/Donnees/films_latin1.xml";
 
    static Connection connection;
-   public class Role {
-      public Role(int i, String n, String p) {
-         id = i;
-         nom = n;
-         personnage = p;
-      }
-      protected int id;
-      protected String nom;
-      protected String personnage;
-   }
+
 
    private ArrayList<Integer> realisateurs = new ArrayList<Integer>();
    private ArrayList<Integer> acteurs = new ArrayList<Integer>();
-   private ArrayList<String> scenaristes = new ArrayList<String>();
-   private ArrayList<String> genres = new ArrayList<String>();
-   private ArrayList<String> pays = new ArrayList<String>();
+   private HashMap<String,Integer> scenaristes = new HashMap<>();
+   private HashMap<String,Integer> genres = new HashMap<>();
+   private HashMap<String,Integer> pays = new HashMap<>();
 
    private ArrayList<String> bandesAnnonce = new ArrayList<String>();
 
+   private ArrayList<Film> Films = new ArrayList<>();
+   private ArrayList<Personne> personnes = new ArrayList<>();
+
+   static int GENRE_COUNT = 0;
+   static int PAYS_COUNT = 0;
+
+   static int SCENARISTE_COUNT = 0;
 
    public LectureBD() {
       connectionBD();                     
    }
    
    
-   public void lecturePersonnes(String nomFichier){      
+   public void lecturePersonnes(){
       try {
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
 
-         InputStream is = new FileInputStream(nomFichier);
+         InputStream is = new FileInputStream(PERSONNE_PATH);
          parser.setInput(is, null);
 
          int eventType = parser.getEventType();
@@ -113,7 +109,7 @@ public class LectureBD {
           System.out.println(e);   
        }
        catch (IOException e) {
-         System.out.println("IOException while parsing " + nomFichier); 
+         System.out.println("IOException while parsing " + PERSONNE_PATH);
        }
    }   
    
@@ -159,14 +155,11 @@ public class LectureBD {
                else if (tag.equals("realisateur") && parser.getAttributeCount() == 1)
                {
                   realisateurId = Integer.parseInt(parser.getAttributeValue(0));
-                  System.out.println("réalisateur ajoutée" + " " + parser.getAttributeValue(0));
+                  //System.out.println("réalisateur ajoutée" + " " + parser.getAttributeValue(0));
                }
                else if (tag.equals("acteur") && parser.getAttributeCount() == 1)
                   roleId = Integer.parseInt(parser.getAttributeValue(0));
-               else if (tag.equals("annonce")){
-                  System.out.println("Annonce ajoutée" + " " + parser.getText());
-                  annonces.add(parser.getText());
-               }
+
             } 
             else if (eventType == XmlPullParser.END_TAG) 
             {                              
@@ -234,8 +227,9 @@ public class LectureBD {
                      rolePersonnage = parser.getText();
                   else if (tag.equals("poster"))
                      poster = parser.getText();
-                  else if (tag.equals("annonce"))
-                     annonces.add(parser.getText());                  
+                  else if (tag.equals("annonce")) {
+                     annonces.add(parser.getText());
+                  }
                }              
             }
             
@@ -366,160 +360,202 @@ public class LectureBD {
       }
    }   
    
-   private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {      
-      // On insere la personne dans la BD
+   private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {
+      String insertAc = "INSERT INTO Personne(idPersonne, nom, lieunaissance, datenaissance, photo, biographie) VALUES (?, ?, ?, ?, ? ,?)";
+      personnes.add(new Personne(nom, anniv, id, lieu, photo, bio));
+      try {
+         System.out.println("Insertion de la personne " + id + " dans la BD");
+         PreparedStatement ps = connection.prepareStatement(insertAc);
+         ps.setInt(1, id);
+         ps.setString(2, nom);
+         ps.setString(3, lieu);
+         ps.setString(4, anniv);
+         ps.setString(5, photo);
+         ps.setString(6, bio);
+         ps.addBatch();
+         ps.executeBatch();
+         ps.close();
+         connection.commit();
+      } catch (SQLException e) {
+         System.out.println("Erreur lors de l'insertion de la personne dans la BD!");
+         e.printStackTrace();
+      }
    }
-   
-   private void insertionFilm(int id, String titre, int annee,
-                           ArrayList<String> pays, String langue, int duree, String resume,
-                           ArrayList<String> genres, String realisateurNom, int realisateurId,
-                           ArrayList<String> scenaristes,
-                           ArrayList<Role> roles, String poster,
-                           ArrayList<String> annonces) {
 
-      String requeteInsertionRealisateur = "INSERT INTO Realisateur(idRealisateur, Nom) VALUES (?,?)";
+   private void insertionFilm(int id, String titre, int annee,
+                              ArrayList<String> pays, String langue, int duree, String resume,
+                              ArrayList<String> genres, String realisateurNom, int realisateurId,
+                              ArrayList<String> scenaristes,
+                              ArrayList<Role> roles, String poster,
+                              ArrayList<String> annonces) {
+
+      String requeteInsertionRealisateur = "INSERT INTO Realisateur(idRealisateur) VALUES (?)";
       String requeteInsertionActeur = "INSERT INTO Acteur(idActeur) VALUES (?)";
       String requeteInsertionPersonnage = "INSERT INTO Personnage(idActeur, idFilm, Nom) VALUES (?,?,?)";
       String requeteInsertionFilm = "INSERT INTO Film(idFilm, titre, annee, langueOriginale, dureeFilm, resumeFilm, affiche, nombreCopie, idrealisateur) VALUES (?,?, ?, ?, ?, ? ,? ,? ,?)";
-      String requeteInsertionScenariste = "INSERT INTO Scenariste(nom) VALUES (?)";
-      String requeteInsertionGenre = "INSERT INTO Genre(nom) VALUES (?)";
-      String requeteInsertionPays = "INSERT INTO Pays(nom) VALUES (?)";
+      String requeteInsertionScenariste = "INSERT INTO Scenariste(idScenariste,nom) VALUES (?,?)";
+      String requeteInsertionGenre = "INSERT INTO Genre(idGenre,nom) VALUES (?,?)";
+      String requeteInsertionPays = "INSERT INTO Pays(idPays,nom) VALUES (?,?)";
       String requeteInsertionScenaristeFilm = "INSERT INTO ScenaristeFilm(idScenariste, idFilm) VALUES (?, ?)";
       String requeteInsertionGenreFilm = "INSERT INTO GenreFilm(idGenre, idFilm) VALUES (?, ?)";
       String requeteInsertionPaysProductionFilm = "INSERT INTO PaysProductionFilm(idPays, idFilm) VALUES (?, ?)";
       String requeteInsertionBandeAnnonce = "INSERT INTO BandeAnnonce(titre, idFilm) VALUES (?, ?)";
 
-        try {
-           PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
-           PreparedStatement ps2 = connection.prepareStatement(requeteInsertionActeur);
-           PreparedStatement ps3 = connection.prepareStatement(requeteInsertionPersonnage);
-           PreparedStatement ps4 = connection.prepareStatement(requeteInsertionFilm);
-           PreparedStatement ps5 = connection.prepareStatement(requeteInsertionScenariste);
-           PreparedStatement ps6 = connection.prepareStatement(requeteInsertionGenre);
-           PreparedStatement ps7 = connection.prepareStatement(requeteInsertionPays);
-           PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
-           PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
-           PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
-           PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
+      try {
+         PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
+         PreparedStatement ps2 = connection.prepareStatement(requeteInsertionActeur);
+         PreparedStatement ps3 = connection.prepareStatement(requeteInsertionPersonnage);
+         PreparedStatement ps4 = connection.prepareStatement(requeteInsertionFilm);
+         PreparedStatement ps5 = connection.prepareStatement(requeteInsertionScenariste);
+         PreparedStatement ps6 = connection.prepareStatement(requeteInsertionGenre);
+         PreparedStatement ps7 = connection.prepareStatement(requeteInsertionPays);
+         PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
+         PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
+         PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
+         PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
 
 
-              if(!realisateurs.contains(realisateurId)){
-                 ps1.setInt(1, realisateurId);
-                 ps1.setString(2, realisateurNom);
-                 ps1.addBatch();
-                 ps1.executeBatch();
-                 ps1.close();
-                 connection.commit();
-                 realisateurs.add(realisateurId);
-              }
-
-              for (Role r : roles){
-                 if(!acteurs.contains(r.id)){
-                    System.out.println(r.id);
-                    // ajout des acteurs
-                    ps2.setInt(1, r.id);
-                    ps2.addBatch();
-                    ps2.executeBatch();
-
-                    // ajout des roles
-                    ps3.setInt(1, r.id);
-                    ps3.setInt(2, id);
-                    ps3.setString(3, r.nom);
-                    ps3.executeBatch();
-                    acteurs.add(r.id);
-                 }
-              }
-
-              ps2.close();
-              ps3.close();
-              connection.commit();
-
-           Random random = new Random();
-           int nbCopies = random.nextInt(100) + 1;
-
-           // insertion des films
-           ps4.setInt(1, id);
-           ps4.setString(2, titre);
-           ps4.setInt(3, annee);
-           ps4.setString(4, langue);
-           ps4.setInt(5, duree);
-           ps4.setString(6, resume);
-           ps4.setString(7, poster);
-           ps4.setInt(8, nbCopies);
-           ps4.setInt(9, realisateurId);
-           ps4.addBatch();
-
-           ps4.executeBatch();
-           ps4.close();
-           connection.commit();
-           System.out.println("Films insérés");
-
-              // ajout des scenaristes
-              for(String s : scenaristes){
-                 if(!this.scenaristes.contains(s)){
-                    ps5.setString(1, s);
-                    ps5.addBatch();
-                    ps5.executeBatch();
-                    this.scenaristes.add(s);
-                 }
-                 ps8.setInt(1, this.scenaristes.indexOf(s)+1);
-                 ps8.setInt(2, id);
-                 ps8.addBatch();
-                 ps8.executeBatch();
-              }
+         if(!realisateurs.contains(realisateurId)){
+            if(realisateurId > 0) {
+               ps1.setInt(1, realisateurId);
+               ps1.addBatch();
+               ps1.executeBatch();
+               ps1.close();
+               realisateurs.add(realisateurId);
+            }
+         }
 
 
+         Random random = new Random();
+         int nbCopies = random.nextInt(100) + 1;
+         // insertion des films
+         ps4.setInt(1, id);
+         ps4.setString(2, titre);
+         ps4.setInt(3, annee);
+         ps4.setString(4, langue);
+         ps4.setInt(5, duree);
+         ps4.setString(6, resume);
+         ps4.setString(7, poster);
+         ps4.setInt(8, nbCopies);
+         if(realisateurId > 0)
+            ps4.setInt(9, realisateurId);
+         else
+            ps4.setNull(9, Types.NULL);
 
-              // ajout des genres
-              for(String g : genres){
-                 if(!this.genres.contains(g)){
-                    ps6.setString(1, g);
-                    ps6.addBatch();
-                    this.genres.add(g);
-                 }
-                 ps9.setInt(1, this.genres.indexOf(g)+1);
-                 ps9.setInt(2, id);
-                 ps9.addBatch();
-                 ps9.executeBatch();
-              }
+         ps4.addBatch();
 
-              // ajout des pays
-              for(String p : pays){
-                 if(!this.pays.contains(p)){
-                    ps7.setString(1, p);
-                    ps7.addBatch();
-                    this.pays.add(p);
-                 }
-                 ps10.setInt(1,this.pays.indexOf(p)+1);
-                 ps10.setInt(2, id);
-                 ps10.addBatch();
-                 ps10.executeBatch();
-              }
+         ps4.executeBatch();
+         ps4.close();
+         System.out.println("Films insérés: ");
 
-           for(String b : annonces){
-              if(!this.bandesAnnonce.contains(b)){
-                 ps11.setString(1, b);
-                 ps11.setInt(2, id);
-                 ps11.addBatch();
-                 ps11.executeBatch();
-                 ps11.close();
-                 connection.commit();
-                 this.bandesAnnonce.add(b);
-              }
-           }
+         for (Role r : roles){
+            if(!acteurs.contains(r.id)){
 
-              ps5.close();
-              ps6.close();
-              ps7.close();
-              ps8.close();
-              ps9.close();
-              ps10.close();
-              connection.commit();
+               // ajout des acteurs
+               ps2.setInt(1, r.id);
+               ps2.addBatch();
+               ps2.executeBatch();
 
-        } catch (SQLException e) {
-             System.out.println("Erreur lors de l'insertion du film dans la BD!");
-             e.printStackTrace();
-        }
+               acteurs.add(r.id);
+            }
+            if(acteurs.contains(r.id)){
+
+               // ajout des roles
+               ps3.setInt(1, r.id);
+               ps3.setInt(2, id);
+               ps3.setString(3, r.nom);
+               ps3.addBatch();
+               ps3.executeBatch();
+            }
+
+         }
+
+         ps2.close();
+         ps3.close();
+
+         // ajout des scenaristes
+         for(String s : scenaristes){
+            if(!this.scenaristes.containsKey(s)){
+               SCENARISTE_COUNT = this.scenaristes.size()+1;
+               this.scenaristes.put(s,SCENARISTE_COUNT);
+
+               ps5.setInt(1, SCENARISTE_COUNT);
+               ps5.setString(2, s);
+               ps5.addBatch();
+               ps5.executeBatch();
+            }
+            if(this.scenaristes.containsKey(s)){
+                ps8.setInt(1, this.scenaristes.get(s));
+                ps8.setInt(2, id);
+                ps8.addBatch();
+                ps8.executeBatch();
+            }
+
+         }
+
+
+
+         // ajout des genres
+         for(String g : genres){
+            if(!this.genres.containsKey(g)){
+               GENRE_COUNT = this.genres.size()+1;
+               this.genres.put(g,GENRE_COUNT);
+               ps6.setInt(1, GENRE_COUNT);
+               ps6.setString(2, g);
+               ps6.addBatch();
+               ps6.executeBatch();
+            }
+            if(this.genres.containsKey(g)) {
+               ps9.setInt(1, this.genres.get(g));
+               ps9.setInt(2, id);
+               ps9.addBatch();
+               ps9.executeBatch();
+            }
+         }
+
+         // ajout des pays
+         for(String p : pays){
+            if(!this.pays.containsKey(p)){
+               PAYS_COUNT = this.pays.size()+1;
+               this.pays.put(p,PAYS_COUNT);
+               ps7.setInt(1, PAYS_COUNT);
+               ps7.setString(2, p);
+               ps7.addBatch();
+                ps7.executeBatch();
+            }
+            if(this.pays.containsKey(p)){
+               ps10.setInt(1,this.pays.get(p));
+               ps10.setInt(2, id);
+               ps10.addBatch();
+               ps10.executeBatch();
+            }
+
+         }
+
+         for(String b : annonces){
+            if(!this.bandesAnnonce.contains(b)){
+               ps11.setString(1, b);
+               ps11.setInt(2, id);
+               ps11.addBatch();
+               ps11.executeBatch();
+
+               this.bandesAnnonce.add(b);
+            }
+         }
+
+         ps5.close();
+         ps6.close();
+         ps7.close();
+         ps8.close();
+         ps9.close();
+         ps10.close();
+         ps11.close();
+         connection.commit();
+
+      } catch (SQLException e) {
+         System.out.println("Erreur lors de l'insertion du film dans la BD!");
+         e.printStackTrace();
+      }
    }
 
    private static void insererForfaits() {
@@ -586,9 +622,11 @@ public class LectureBD {
    public static void main(String[] args) {
       LectureBD lecture = new LectureBD();
       //lecture.insererForfaits();
-
       //lecture.lecturePersonnes(args[0]);
+      //lecture.lecturePersonnes();
       lecture.lectureFilms();
+
+      //lecture.insertionFilm();
 
       //String basePath = System.getProperty("user.dir") + File.separator + "Donnees" + File.separator;
       //lecture.lecturePersonnes(args[0]);

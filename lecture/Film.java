@@ -11,16 +11,16 @@ public class Film {
     public int realisteurId;
     public int duree;
     public String affiche;
-    public List<Integer> actsId = new ArrayList<>();
+    public List<Integer> acteurs = new ArrayList<>();
     public List<String> scenaristesNom = new ArrayList<>();
     public List<String> pays = new ArrayList<>();
     public List<String> genres = new ArrayList<>();
     public List<String> bandeAnnonces = new ArrayList<>();
-    public List<Personnage> personnages = new ArrayList<>();
+    public List<Role> roles = new ArrayList<>();
 
     public Film(int filmId, String titre, int anneeSortie, String langue, String resume, int duree, String affiche,
-                int realisteurId, List<Integer> actsId, List<String> scenaristesNom, List<String> pays,
-                List<String> genres, List<String> bandeAnnonces, List<Personnage> personnages) {
+                int realisteurId, List<Integer> acteurs, List<String> scenaristesNom, List<String> pays,
+                List<String> genres, List<String> bandeAnnonces, List<Role> roles) {
         this.filmId = filmId;
         this.titre = titre;
         this.anneeSortie = anneeSortie;
@@ -29,8 +29,8 @@ public class Film {
         this.affiche = affiche;
         this.Resume = resume;
         this.realisteurId = realisteurId;
-        if (actsId != null)
-            this.actsId.addAll(actsId);
+        if (acteurs != null)
+            this.acteurs.addAll(acteurs);
         if (scenaristesNom != null)
             this.scenaristesNom.addAll(scenaristesNom);
         if (pays != null)
@@ -39,7 +39,7 @@ public class Film {
             this.genres.addAll(genres);
         if  (bandeAnnonces != null)
             this.bandeAnnonces.addAll(bandeAnnonces);
-        if (personnages != null)
-            this.personnages.addAll(personnages);
+        if (roles != null)
+            this.roles.addAll(roles);
     }
 }
