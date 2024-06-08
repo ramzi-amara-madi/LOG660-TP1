@@ -463,9 +463,9 @@ public class LectureBD {
             ps12.setInt(3, id);
             ps12.addBatch();
             ps12.executeBatch();
-            ps12.close();
             CODE_COPIE++;
          }
+         ps12.close();
 
          for (Role r : roles){
             if(!acteurs.contains(r.id)){
