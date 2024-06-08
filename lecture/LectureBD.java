@@ -16,7 +16,7 @@ public class LectureBD {
    // Indiquer les chemins des fichiers xml
    final static String PERSONNE_PATH = "lecture/Donnees/personnes_latin1.xml"
            , CLIENTS_PATH = ""
-           , FILMS_PATH = "Donnees/films_latin1.xml";
+           , FILMS_PATH = "lecture/Donnees/films_latin1.xml";
 
    static Connection connection;
 
@@ -36,6 +36,8 @@ public class LectureBD {
    static int PAYS_COUNT = 0;
 
    static int SCENARISTE_COUNT = 0;
+
+   static int CODE_COPIE = 1;
 
    public LectureBD() {
       connectionBD();                     
@@ -401,6 +403,7 @@ public class LectureBD {
       String requeteInsertionGenreFilm = "INSERT INTO GenreFilm(idGenre, idFilm) VALUES (?, ?)";
       String requeteInsertionPaysProductionFilm = "INSERT INTO PaysProductionFilm(idPays, idFilm) VALUES (?, ?)";
       String requeteInsertionBandeAnnonce = "INSERT INTO BandeAnnonce(titre, idFilm) VALUES (?, ?)";
+      String requeteInsertionCopieFilm = "INSERT INTO CopieFilm(codeCopie, disponible, idFilm) VALUES (?, ?, ?)";
 
       try {
          PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
@@ -414,7 +417,10 @@ public class LectureBD {
          PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
          PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
          PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
+         PreparedStatement ps12 = connection.prepareStatement(requeteInsertionCopieFilm);
 
+
+         System.out.println("Commencement insertion de film");
 
          if(!realisateurs.contains(realisateurId)){
             if(realisateurId > 0) {
@@ -428,7 +434,7 @@ public class LectureBD {
 
 
          Random random = new Random();
-         int nbCopies = random.nextInt(100) + 1;
+         int nbCopies = random.nextInt(10) + 1;
          // insertion des films
          ps4.setInt(1, id);
          ps4.setString(2, titre);
@@ -448,6 +454,18 @@ public class LectureBD {
          ps4.executeBatch();
          ps4.close();
          System.out.println("Films insérés: ");
+
+         // Insertion copieFilm
+         for(int i = 0; i < nbCopies; i++)
+         {
+            ps12.setInt(1, CODE_COPIE);
+            ps12.setInt(2, 1);
+            ps12.setInt(3, id);
+            ps12.addBatch();
+            ps12.executeBatch();
+            CODE_COPIE++;
+         }
+         ps12.close();
 
          for (Role r : roles){
             if(!acteurs.contains(r.id)){
