@@ -48,8 +48,6 @@ public class LectureBD {
 
    static int ADDRESS_ID_COUNT = 1;
 
-   private static final int BATCH_SIZE = 1000;
-
    private static int NBR_BATCH_INSERTION_CLIENT = 0;
 
    public static int clientCounter = 0;
@@ -62,6 +60,7 @@ public class LectureBD {
    
    public void lecturePersonnes(){
       try {
+         System.out.println("Insertion des personnes en cours...");
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
 
@@ -128,6 +127,8 @@ public class LectureBD {
          connection.commit();
 
          this.sqlQuery.statement_insertion_Personne.close();
+
+         System.out.println("Insertion des personnes terminé");
       }
       catch (XmlPullParserException e) {
           System.out.println(e);   
@@ -140,6 +141,7 @@ public class LectureBD {
    }   
    
    public void lectureFilms(){
+      System.out.println("Insertion de film en cours...");
       try {
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
@@ -181,7 +183,6 @@ public class LectureBD {
                else if (tag.equals("realisateur") && parser.getAttributeCount() == 1)
                {
                   realisateurId = Integer.parseInt(parser.getAttributeValue(0));
-                  //System.out.println("réalisateur ajoutée" + " " + parser.getAttributeValue(0));
                }
                else if (tag.equals("acteur") && parser.getAttributeCount() == 1)
                   roleId = Integer.parseInt(parser.getAttributeValue(0));
@@ -302,9 +303,7 @@ public class LectureBD {
    }
    
    public void lectureClients(String nomFichier){
-      System.out.println("Début insertion client");
-      System.out.println("");
-      int clientCounter = 0;
+      System.out.println("Insertion des clients en cours...");
       try {
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
@@ -372,8 +371,6 @@ public class LectureBD {
                   expAnnee = -1;
 
                   clientCounter++;
-
-                  //System.out.println("Client numéro " + clientCounter + " ajouté");
                }
             }
             else if (eventType == XmlPullParser.TEXT && id >= 0) 
@@ -426,8 +423,7 @@ public class LectureBD {
          this.sqlQuery.statement_insertation_carteCredit.close();
          this.sqlQuery.statement_insertion_client.close();
 
-         System.out.println("");
-         System.out.println("Insertion client terminé");
+         System.out.println("Insertion des client terminé");
       }
       catch (XmlPullParserException e) {
           System.out.println(e);   
@@ -440,11 +436,9 @@ public class LectureBD {
    }   
    
    private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {
-      String insertAc = "INSERT INTO Personne(idPersonne, nom, lieunaissance, datenaissance, photo, biographie) VALUES (?, ?, ?, ?, ? ,?)";
       personnes.add(new Personne(nom, anniv, id, lieu, photo, bio));
+
       try {
-         System.out.println("Insertion de la personne " + id + " dans la BD");
-         PreparedStatement ps = connection.prepareStatement(insertAc);
          this.sqlQuery.statement_insertion_Personne.setInt(1, id);
          this.sqlQuery.statement_insertion_Personne.setString(2, nom);
          this.sqlQuery.statement_insertion_Personne.setString(3, lieu);
@@ -452,9 +446,6 @@ public class LectureBD {
          this.sqlQuery.statement_insertion_Personne.setString(5, photo);
          this.sqlQuery.statement_insertion_Personne.setString(6, bio);
          this.sqlQuery.statement_insertion_Personne.addBatch();
-         //ps.executeBatch();
-         //ps.close();
-         //connection.commit();
       } catch (SQLException e) {
          System.out.println("Erreur lors de l'insertion de la personne dans la BD!");
          e.printStackTrace();
@@ -467,44 +458,11 @@ public class LectureBD {
                               ArrayList<String> scenaristes,
                               ArrayList<Role> roles, String poster,
                               ArrayList<String> annonces) {
-
-      /*
-      String requeteInsertionRealisateur = "INSERT INTO Realisateur(idRealisateur) VALUES (?)";
-      String requeteInsertionActeur = "INSERT INTO Acteur(idActeur) VALUES (?)";
-      String requeteInsertionPersonnage = "INSERT INTO Personnage(idActeur, idFilm, Nom) VALUES (?,?,?)";
-      String requeteInsertionFilm = "INSERT INTO Film(idFilm, titre, annee, langueOriginale, dureeFilm, resumeFilm, affiche, nombreCopie, idrealisateur) VALUES (?,?, ?, ?, ?, ? ,? ,? ,?)";
-      String requeteInsertionScenariste = "INSERT INTO Scenariste(idScenariste,nom) VALUES (?,?)";
-      String requeteInsertionGenre = "INSERT INTO Genre(idGenre,nom) VALUES (?,?)";
-      String requeteInsertionPays = "INSERT INTO Pays(idPays,nom) VALUES (?,?)";
-      String requeteInsertionScenaristeFilm = "INSERT INTO ScenaristeFilm(idScenariste, idFilm) VALUES (?, ?)";
-      String requeteInsertionGenreFilm = "INSERT INTO GenreFilm(idGenre, idFilm) VALUES (?, ?)";
-      String requeteInsertionPaysProductionFilm = "INSERT INTO PaysProductionFilm(idPays, idFilm) VALUES (?, ?)";
-      String requeteInsertionBandeAnnonce = "INSERT INTO BandeAnnonce(titre, idFilm) VALUES (?, ?)";
-      String requeteInsertionCopieFilm = "INSERT INTO CopieFilm(codeCopie, disponible, idFilm) VALUES (?, ?, ?)";
-      */
-
       try {
-         /*
-         PreparedStatement ps1 = connection.prepareStatement(requeteInsertionRealisateur);
-         PreparedStatement ps2 = connection.prepareStatement(requeteInsertionActeur);
-         PreparedStatement ps3 = connection.prepareStatement(requeteInsertionPersonnage);
-         PreparedStatement ps4 = connection.prepareStatement(requeteInsertionFilm);
-         PreparedStatement ps5 = connection.prepareStatement(requeteInsertionScenariste);
-         PreparedStatement ps6 = connection.prepareStatement(requeteInsertionGenre);
-         PreparedStatement ps7 = connection.prepareStatement(requeteInsertionPays);
-         PreparedStatement ps8 = connection.prepareStatement(requeteInsertionScenaristeFilm);
-         PreparedStatement ps9 = connection.prepareStatement(requeteInsertionGenreFilm);
-         PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
-         PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
-         PreparedStatement ps12 = connection.prepareStatement(requeteInsertionCopieFilm);
-         */
-
          if(!realisateurs.contains(realisateurId)){
             if(realisateurId > 0) {
                this.sqlQuery.statement_insertion_Realisateur.setInt(1, realisateurId);
                this.sqlQuery.statement_insertion_Realisateur.addBatch();
-               //ps1.executeBatch();
-               //ps1.close();
                realisateurs.add(realisateurId);
             }
          }
@@ -528,10 +486,6 @@ public class LectureBD {
 
          this.sqlQuery.statement_insertion_Film.addBatch();
 
-         //ps4.executeBatch();
-         //ps4.close();
-         //System.out.println("Films insérés: ");
-
          // Insertion copieFilm
          for(int i = 0; i < nbCopies; i++)
          {
@@ -539,10 +493,8 @@ public class LectureBD {
             this.sqlQuery.statement_insertion_CopieFilm.setInt(2, 1);
             this.sqlQuery.statement_insertion_CopieFilm.setInt(3, id);
             this.sqlQuery.statement_insertion_CopieFilm.addBatch();
-            //ps12.executeBatch();
             CODE_COPIE++;
          }
-         //ps12.close();
 
          for (Role r : roles){
             if(!acteurs.contains(r.id)){
@@ -550,7 +502,6 @@ public class LectureBD {
                // ajout des acteurs
                this.sqlQuery.statement_insertion_Acteur.setInt(1, r.id);
                this.sqlQuery.statement_insertion_Acteur.addBatch();
-               //ps2.executeBatch();
 
                acteurs.add(r.id);
             }
@@ -561,13 +512,9 @@ public class LectureBD {
                this.sqlQuery.statement_insertion_Personnage.setInt(2, id);
                this.sqlQuery.statement_insertion_Personnage.setString(3, r.nom);
                this.sqlQuery.statement_insertion_Personnage.addBatch();
-               //ps3.executeBatch();
             }
 
          }
-
-         //ps2.close();
-         //ps3.close();
 
          // ajout des scenaristes
          for(String s : scenaristes){
@@ -578,13 +525,11 @@ public class LectureBD {
                this.sqlQuery.statement_insertion_Scenariste.setInt(1, SCENARISTE_COUNT);
                this.sqlQuery.statement_insertion_Scenariste.setString(2, s);
                this.sqlQuery.statement_insertion_Scenariste.addBatch();
-               //ps5.executeBatch();
             }
             if(this.scenaristes.containsKey(s)){
                 this.sqlQuery.statement_insertion_ScenaristeFilm.setInt(1, this.scenaristes.get(s));
                this.sqlQuery.statement_insertion_ScenaristeFilm.setInt(2, id);
                this.sqlQuery.statement_insertion_ScenaristeFilm.addBatch();
-                //ps8.executeBatch();
             }
 
          }
@@ -599,13 +544,11 @@ public class LectureBD {
                this.sqlQuery.statement_insertion_Genre.setInt(1, GENRE_COUNT);
                this.sqlQuery.statement_insertion_Genre.setString(2, g);
                this.sqlQuery.statement_insertion_Genre.addBatch();
-               //ps6.executeBatch();
             }
             if(this.genres.containsKey(g)) {
                this.sqlQuery.statement_insertion_GenreFilm.setInt(1, this.genres.get(g));
                this.sqlQuery.statement_insertion_GenreFilm.setInt(2, id);
                this.sqlQuery.statement_insertion_GenreFilm.addBatch();
-               //ps9.executeBatch();
             }
          }
 
@@ -617,13 +560,11 @@ public class LectureBD {
                this.sqlQuery.statement_insertion_Pays.setInt(1, PAYS_COUNT);
                this.sqlQuery.statement_insertion_Pays.setString(2, p);
                this.sqlQuery.statement_insertion_Pays.addBatch();
-               //ps7.executeBatch();
             }
             if(this.pays.containsKey(p)){
                this.sqlQuery.statement_insertion_PaysProductionFilm.setInt(1,this.pays.get(p));
                this.sqlQuery.statement_insertion_PaysProductionFilm.setInt(2, id);
                this.sqlQuery.statement_insertion_PaysProductionFilm.addBatch();
-               //ps10.executeBatch();
             }
 
          }
@@ -633,23 +574,10 @@ public class LectureBD {
                this.sqlQuery.statement_insertion_BandeAnnonce.setString(1, b);
                this.sqlQuery.statement_insertion_BandeAnnonce.setInt(2, id);
                this.sqlQuery.statement_insertion_BandeAnnonce.addBatch();
-               //ps11.executeBatch();
 
                this.bandesAnnonce.add(b);
             }
          }
-
-         /*
-         ps5.close();
-         ps6.close();
-         ps7.close();
-         ps8.close();
-         ps9.close();
-         ps10.close();
-         ps11.close();
-         connection.commit();
-         */
-
       } catch (SQLException e) {
          System.out.println("Erreur lors de l'insertion du film dans la BD!");
          e.printStackTrace();
