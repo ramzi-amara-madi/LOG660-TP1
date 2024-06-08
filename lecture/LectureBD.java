@@ -2,20 +2,23 @@ import java.io.*;
 
 import java.sql.*;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
+import Algorithme.UniqueCVVGenerator;
+import Query.SQLQuery;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
-import java.time.format.DateTimeFormatter;
 
 public class LectureBD {
 
    // Indiquer les chemins des fichiers xml
    final static String PERSONNE_PATH = "lecture/Donnees/personnes_latin1.xml"
-           , CLIENTS_PATH = ""
+           , CLIENTS_PATH = "lecture/Donnees/clients_latin1.xml"
            , FILMS_PATH = "lecture/Donnees/films_latin1.xml";
 
    static Connection connection;
@@ -32,6 +35,10 @@ public class LectureBD {
    private ArrayList<Film> Films = new ArrayList<>();
    private ArrayList<Personne> personnes = new ArrayList<>();
 
+   private UniqueCVVGenerator cvvGenerator = new UniqueCVVGenerator();
+
+   private SQLQuery sqlQuery;
+
    static int GENRE_COUNT = 0;
    static int PAYS_COUNT = 0;
 
@@ -39,8 +46,17 @@ public class LectureBD {
 
    static int CODE_COPIE = 1;
 
-   public LectureBD() {
-      connectionBD();                     
+   static int ADDRESS_ID_COUNT = 1;
+
+   private static final int BATCH_SIZE = 1000;
+
+   private static int NBR_BATCH_INSERTION_CLIENT = 0;
+
+   public static int clientCounter = 0;
+
+   public LectureBD() throws SQLException {
+      connectionBD();
+      this.sqlQuery = new SQLQuery(connection);
    }
    
    
@@ -238,6 +254,7 @@ public class LectureBD {
             
             eventType = parser.next();            
          }
+         System.out.println("Insertion des films terminé");
       }
       catch (XmlPullParserException e) {
           System.out.println(e);   
@@ -248,6 +265,9 @@ public class LectureBD {
    }
    
    public void lectureClients(String nomFichier){
+      System.out.println("Début insertion client");
+      System.out.println("");
+      int clientCounter = 0;
       try {
          XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
          XmlPullParser parser = factory.newPullParser();
@@ -313,6 +333,10 @@ public class LectureBD {
                   id = -1;
                   expMois = -1;
                   expAnnee = -1;
+
+                  clientCounter++;
+
+                  //System.out.println("Client numéro " + clientCounter + " ajouté");
                }
             }
             else if (eventType == XmlPullParser.TEXT && id >= 0) 
@@ -354,12 +378,27 @@ public class LectureBD {
             
             eventType = parser.next();            
          }
+         // Executer les batch restante
+         this.sqlQuery.statement_insertion_addresse.executeBatch();
+         this.sqlQuery.statement_insertation_carteCredit.executeBatch();
+         this.sqlQuery.statement_insertion_client.executeBatch();
+
+         connection.commit();
+
+         this.sqlQuery.statement_insertion_addresse.close();
+         this.sqlQuery.statement_insertation_carteCredit.close();
+         this.sqlQuery.statement_insertion_client.close();
+
+         System.out.println("");
+         System.out.println("Insertion client terminé");
       }
       catch (XmlPullParserException e) {
           System.out.println(e);   
       }
       catch (IOException e) {
          System.out.println("IOException while parsing " + nomFichier); 
+      } catch (SQLException e) {
+          throw new RuntimeException(e);
       }
    }   
    
@@ -418,9 +457,6 @@ public class LectureBD {
          PreparedStatement ps10 = connection.prepareStatement(requeteInsertionPaysProductionFilm);
          PreparedStatement ps11 = connection.prepareStatement(requeteInsertionBandeAnnonce);
          PreparedStatement ps12 = connection.prepareStatement(requeteInsertionCopieFilm);
-
-
-         System.out.println("Commencement insertion de film");
 
          if(!realisateurs.contains(realisateurId)){
             if(realisateurId > 0) {
@@ -623,7 +659,68 @@ public class LectureBD {
                              String codePostal, String carte, String noCarte,
                              int expMois, int expAnnee, String motDePasse,
                              String forfait) {
-      // On le client dans la BD
+      try {
+         // Ajout de l'adresse
+         sqlQuery.statement_insertion_addresse.setInt(1, ADDRESS_ID_COUNT);
+         sqlQuery.statement_insertion_addresse.setString(2, adresse);
+         sqlQuery.statement_insertion_addresse.setString(3, ville);
+         sqlQuery.statement_insertion_addresse.setString(4, province);
+         // Retrait des espaces dans le code postale
+         codePostal = codePostal.replaceAll("\\s", "");
+         sqlQuery.statement_insertion_addresse.setString(5, codePostal);
+         sqlQuery.statement_insertion_addresse.addBatch();
+         NBR_BATCH_INSERTION_CLIENT++;
+
+         //Ajout Carte de crédit
+         // Retrait des espaces dans la carte de crédit
+         noCarte = noCarte.replaceAll("\\s", "");
+         sqlQuery.statement_insertation_carteCredit.setString(1, noCarte);
+         sqlQuery.statement_insertation_carteCredit.setString(2, carte);
+         sqlQuery.statement_insertation_carteCredit.setDate(3, new Date(expAnnee, expMois, 1));
+         sqlQuery.statement_insertation_carteCredit.setString(4, this.cvvGenerator.generateCVV());
+         sqlQuery.statement_insertation_carteCredit.addBatch();
+         NBR_BATCH_INSERTION_CLIENT++;
+
+         // Ajout client
+         sqlQuery.statement_insertion_client.setInt(1, id);
+         sqlQuery.statement_insertion_client.setString(2, courriel);
+         sqlQuery.statement_insertion_client.setString(3, noCarte);
+         // Retrait des - dans le numéros de téléphone
+         tel = tel.replace("-", "");
+         sqlQuery.statement_insertion_client.setString(4, tel);
+         sqlQuery.statement_insertion_client.setString(5, motDePasse);
+         sqlQuery.statement_insertion_client.setInt(6, ADDRESS_ID_COUNT);
+         sqlQuery.statement_insertion_client.setString(7, forfait);
+         // Convertion du string anniversaire en type Date
+         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+         java.util.Date dateJava = dateFormat.parse(anniv);
+         sqlQuery.statement_insertion_client.setDate(8, new Date(dateJava.getTime()));
+         sqlQuery.statement_insertion_client.addBatch();
+         NBR_BATCH_INSERTION_CLIENT++;
+
+         clientCounter++;
+
+         System.out.println("Client numéro " + clientCounter + " ajouté");
+
+         // Executer toutes les baches et les fermer et incrémentation de la batch
+         if(NBR_BATCH_INSERTION_CLIENT == 330)
+         {
+            sqlQuery.statement_insertion_addresse.executeBatch();
+            sqlQuery.statement_insertation_carteCredit.executeBatch();
+            sqlQuery.statement_insertion_client.executeBatch();
+            NBR_BATCH_INSERTION_CLIENT = 0;
+            System.out.println("Batch restart from 0");
+         }
+
+         ADDRESS_ID_COUNT++;
+      }
+      catch (SQLException e)
+      {
+         System.out.println("Erreur lors de l'insertion du client dans la BD!");
+         e.printStackTrace();
+      } catch (ParseException e) {
+          throw new RuntimeException(e);
+      }
    }
    
    private void connectionBD() {
@@ -638,12 +735,13 @@ public class LectureBD {
       }
    }
 
-   public static void main(String[] args) {
+   public static void main(String[] args) throws SQLException {
       LectureBD lecture = new LectureBD();
       //lecture.insererForfaits();
       //lecture.lecturePersonnes(args[0]);
       //lecture.lecturePersonnes();
-      lecture.lectureFilms();
+      //lecture.lectureFilms();
+      lecture.lectureClients(CLIENTS_PATH);
 
       //lecture.insertionFilm();
 
