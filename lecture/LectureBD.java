@@ -4,12 +4,14 @@ import java.sql.*;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
 import Algorithme.UniqueCVVGenerator;
 import Query.SQLQuery;
+import oracle.sql.DATE;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -631,6 +633,26 @@ public class LectureBD {
                              int expMois, int expAnnee, String motDePasse,
                              String forfait) {
       try {
+         LocalDateTime checkDate = LocalDateTime.now();
+
+         if(expMois > 12){
+            return;
+         }
+
+         int anne = checkDate.getYear();
+         int mois = checkDate.getMonth().getValue();
+
+         // today : 2024-06
+         // Expiration : 2019-04
+         if(checkDate.getYear() > expAnnee)
+         {
+            return;
+         } else if (checkDate.getYear() == expAnnee) {
+            if(checkDate.getMonth().getValue() > expMois) {
+               return;
+            }
+         }
+
          // Ajout de l'adresse
          sqlQuery.statement_insertion_addresse.setInt(1, ADDRESS_ID_COUNT);
          sqlQuery.statement_insertion_addresse.setString(2, adresse);
@@ -670,19 +692,6 @@ public class LectureBD {
          NBR_BATCH_INSERTION_CLIENT++;
 
          clientCounter++;
-
-         System.out.println("Client numéro " + clientCounter + " ajouté");
-
-         // Executer toutes les baches et les fermer et incrémentation de la batch
-         if(NBR_BATCH_INSERTION_CLIENT == 330)
-         {
-            sqlQuery.statement_insertion_addresse.executeBatch();
-            sqlQuery.statement_insertation_carteCredit.executeBatch();
-            sqlQuery.statement_insertion_client.executeBatch();
-            NBR_BATCH_INSERTION_CLIENT = 0;
-            System.out.println("Batch restart from 0");
-         }
-
          ADDRESS_ID_COUNT++;
       }
       catch (SQLException e)
